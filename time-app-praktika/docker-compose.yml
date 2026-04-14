@@ -1,0 +1,48 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: time-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: time_db
+      MYSQL_USER: time_user
+      MYSQL_PASSWORD: time_pass
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "time_user", "-ptime_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: time-api
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_USER: time_user
+      DB_PASSWORD: time_pass
+      DB_NAME: time_db
+      DB_PORT: 3306
+    ports:
+      - "5555:5555"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: time-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  db_data:
